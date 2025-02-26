@@ -4,8 +4,8 @@
   "description": "Friday Daily Schedule",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#f4f6f5",
-  "theme_color": "#f4f6f5",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "icons": [
     {
       "src": "/friday-schedule/192x192.png",
