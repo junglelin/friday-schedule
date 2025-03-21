@@ -6,6 +6,8 @@ import PrimeVue from "primevue/config";
 import Aura from "@primeuix/themes/aura";
 import { setupFirebase } from "./services/firebase";
 import ConfirmationService from "primevue/confirmationservice";
+import router from "./router";
+import ToastService from "primevue/toastservice";
 
 setupFirebase;
 
@@ -16,4 +18,7 @@ app.use(PrimeVue, {
   },
 });
 app.use(ConfirmationService);
+app.use(ToastService);
+
+app.use(router);
 app.mount("#app");

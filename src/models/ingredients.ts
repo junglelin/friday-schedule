@@ -1,0 +1,87 @@
+export type IngredientsCategories =
+  | "daily"
+  | "behavior"
+  | "hospital"
+  | "medicine"
+  | "vaccine"
+  | "food";
+
+export const ingredients = {
+  behavior: [
+    { label: "舔空氣", value: 1, active: true },
+    { label: "看屁股", value: 2, active: true },
+    { label: "聞屁股", value: 3, active: true },
+    { label: "咬腳", value: 5, active: true },
+    { label: "抓左耳", value: 6, active: true },
+    { label: "抓右耳", value: 7, active: true },
+    { label: "抓癢", value: 8, active: true },
+    { label: "抓右臉", value: 9, active: true },
+    { label: "抓左臉", value: 10, active: true },
+    { label: "抓左下巴", value: 11, active: true },
+    { label: "抓右下巴", value: 12, active: true },
+    { label: "抓下巴", value: 13, active: true },
+    { label: "抓身體", value: 14, active: true },
+    { label: "抓左側身體", value: 15, active: true },
+    { label: "抓右側身體", value: 16, active: true },
+    { label: "撥臉", value: 17, active: true },
+    { label: "洗臉", value: 18, active: true },
+    { label: "吐", value: 4, active: true },
+  ],
+  daily: [
+    { label: "家裡大便", value: 1, active: true },
+    { label: "散步大便", value: 2, active: true },
+    { label: "出門散步(走起)", value: 13, active: true },
+    { label: "出門散步(回家)", value: 14, active: true },
+    { label: "穿鞋", value: 7, active: true },
+    { label: "刷牙", value: 3, active: true },
+    { label: "爸爸上班", value: 10, active: true },
+    { label: "爸爸下班", value: 11, active: true },
+    { label: "只有爸爸在家", value: 12, active: true },
+    { label: "家裡洗澡(開始)", value: 4, active: true },
+    { label: "吹毛髮", value: 8, active: true },
+    { label: "家裡洗澡(結束)", value: 9, active: true },
+    { label: "美容洗澡", value: 5, active: true },
+    { label: "剪指甲", value: 6, active: true },
+    { label: "乾洗(身體)", value: 15, active: true },
+    { label: "乾洗(四腳)", value: 16, active: true },
+  ],
+  food: [
+    { label: "ans20 1/2 + 法米納雞肉石榴1/2", value: 1, active: false },
+    { label: "ans20 + 法米納雞肉石榴 (2 :1)", value: 2, active: false },
+    { label: "ans20 + 法米納雞肉石榴 (3 :1)", value: 3, active: false },
+    { label: "ans20", value: 4, active: true },
+    { label: "地瓜", value: 5, active: true },
+  ],
+  medicine: [
+    { label: "情緒藥", value: 1, active: true },
+    { label: "安癢快", value: 2, active: true },
+    { label: "止瀉", value: 3, active: true },
+    { label: "胃乳", value: 5, active: true },
+    { label: "制酸劑", value: 6, active: true },
+    { label: "神經醯胺(噴下巴)", value: 7, active: true },
+    { label: "神經醯胺(身體兩側)", value: 8, active: true },
+    { label: "神經醯胺(四腳)", value: 10, active: true },
+    { label: "酷斥癢(噴下巴)", value: 11, active: true },
+    { label: "酷斥癢(噴耳朵)", value: 12, active: true },
+    { label: "酷斥癢(身體兩側)", value: 13, active: true },
+    { label: "酷斥癢(四腳)", value: 14, active: true },
+    { label: "潔膚油(指甲)", value: 17, active: true },
+    { label: "潔膚油(下巴)", value: 18, active: true },
+    { label: "護膚清潔保濕噴霧(腳腳指甲)", value: 21, active: true },
+    { label: "奈米潔膚露", value: 19, active: true },
+    { label: "入浴湯20ml", value: 20, active: true },
+    { label: "心疥爽", value: 15, active: true },
+    { label: "益百分", value: 16, active: true },
+    { label: "全能狗s", value: 4, active: true },
+    { label: "安適得", value: 9, active: true },
+  ],
+  vaccine: [
+    { label: "十合一", value: 1, active: true },
+    { label: "狂犬", value: 3, active: true },
+    { label: "萊姆疫苗", value: 2, active: true },
+  ],
+  hospital: [
+    { label: "猩猩狐狸動物醫院(皮膚科)", value: 1, active: true },
+    { label: "星宇", value: 2, active: true },
+  ],
+};
