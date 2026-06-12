@@ -1,25 +1,30 @@
-import { createRouter, createWebHashHistory } from "vue-router";
+import { createRouter, createWebHistory } from "vue-router";
 
 const routes = [
   {
-    path: "/Cathy",
-    name: "Cathy",
-    component: () => import("../views/list.vue"),
-  },
-  {
     path: "/",
     name: "Home",
-    component: () => import("../views/list.vue"),
+    component: () => import("../views/dashboard.vue"),
   },
   {
-    path: "/chart",
-    name: "Chart",
-    component: () => import("../views/chart.vue"),
+    path: "/options",
+    name: "Options",
+    component: () => import("../views/options.vue"),
+  },
+  {
+    path: "/options/favorites",
+    name: "OptionFavorites",
+    component: () => import("../views/optionFavorites.vue"),
+  },
+  {
+    path: "/options/:category",
+    name: "OptionItems",
+    component: () => import("../views/optionItems.vue"),
   },
 ];
 
 const router = createRouter({
-  history: createWebHashHistory(),
+  history: createWebHistory("/friday-schedule/"),
   routes,
 });
 

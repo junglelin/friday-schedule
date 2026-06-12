@@ -1,25 +1,19 @@
 <script setup lang="ts">
 import Button from "primevue/button";
 import Tag from "primevue/tag";
-import DatePicker from "primevue/datepicker";
-import Checkbox from "primevue/checkbox";
-import Textarea from "primevue/textarea";
-import Select from "primevue/select";
+import Menu from "primevue/menu";
 import ConfirmDialog from "primevue/confirmdialog";
 import { useConfirm } from "primevue/useconfirm";
 import BlockUI from "primevue/blockui";
 import ProgressSpinner from "primevue/progressspinner";
 import Toast from "primevue/toast";
 import { useToast } from "primevue/usetoast";
-// import { useRoute } from "vue-router";
 
 import dayjs from "dayjs";
-import axios from "axios";
 
 import { db } from "../services/firebase";
 import {
   collection,
-  addDoc,
   query,
   orderBy,
   getDocs,
@@ -31,7 +25,9 @@ import {
 import { QueryDocumentSnapshot } from "firebase/firestore";
 
 import { ref, watch, onMounted, computed } from "vue";
-import { ingredients, type IngredientsCategories } from "../models/ingredients";
+import type { IngredientsCategories } from "../models/ingredients";
+import { useIngredients } from "../services/ingredientsStore";
+import FormDialog from "../components/FormDialog.vue";
 
 interface CurrentWeather {
   humidity: string;
@@ -62,7 +58,7 @@ interface CurrentLocation {
   // display_name: string;
 }
 
-interface MyDocumentData {
+export interface MyDocumentData {
   id?: string;
   remark: string;
   createDate?: string;
@@ -79,7 +75,7 @@ interface MyDocumentData {
     food: number[];
   };
   weather: CurrentWeather;
-  locationMode: number;
+  locationMode?: number;
   location: CurrentLocation;
   status: boolean;
   createBy: string;
@@ -93,20 +89,13 @@ const mappingWeather: Record<number, string> = {
   2: "雨天",
 };
 
-const locationModeOptions = [
-  { value: 1, label: "家裡" },
-  { value: 2, label: "露營" },
-];
-
-const currentDate = ref<Date | null>();
-const currentTime = ref<Date | null>();
 const todayStartDateTime = ref<Date | null>(dayjs().startOf("day").toDate());
+
 // const todayEndDateTime = ref<Date | null>(
 //   dayjs().endOf("day").subtract(1, "second").toDate()
 // );
-
 // const todayStartDateTime = ref<Date | null>(
-//   dayjs("2025-02-26").startOf("day").toDate()
+//   dayjs("2025-09-01").startOf("day").toDate()
 // );
 
 // const todayEndDateTime = ref<Date | null>(
@@ -115,58 +104,16 @@ const todayStartDateTime = ref<Date | null>(dayjs().startOf("day").toDate());
 
 const currentFetchDateTime = ref<Date | null>();
 const querySnapshotData = ref<MyDocumentData[]>([]);
-const remark = ref("");
-const locationMode = ref(1);
-const options = ref<[string, number][]>([]);
-const currentLocation = ref<CurrentLocation>({
-  latitude: 0,
-  longitude: 0,
-  display_name: "",
-});
-const currentWeather = ref<CurrentWeather>({
-  humidity: "",
-  pressure: "",
-  windSpeed: "",
-  windScale: "",
-  windDir: "",
-  wind360: "",
-  text: "",
-  feelsLike: "",
-  temp: "",
-  obsTime: "",
-});
-const initialWeather = {
-  humidity: "",
-  pressure: "",
-  windSpeed: "",
-  windScale: "",
-  windDir: "",
-  wind360: "",
-  text: "",
-  feelsLike: "",
-  temp: "",
-  obsTime: "",
-};
-const currentUpdateRefDocId = ref("");
-const currentUpdateRemarkValue = ref("");
-
 const formStatus = ref(false);
 
 const confirm = useConfirm();
 const isLoading = ref(true);
 const toast = useToast();
 
-// const route = useRoute();
-// const user = ref(
-//   typeof route.params.user === "string" ? route.params.user : ""
-// );
+const { ingredients: ingredientList } = useIngredients();
 
-// const allowedUsers = ["jungle", "cathy"];
-// const isValidUser = computed(() => {
-//   return typeof user.value === "string" && allowedUsers.includes(user.value);
-// });
-
-const ingredientList = ref(ingredients);
+const formDialogVisible = ref(false);
+const formDialogEditData = ref<any>(null);
 
 function getIcon(optionName: string): string {
   const iconMap: {
@@ -218,14 +165,15 @@ const fetch = async () => {
     const latestQuery = query(
       collection(db, import.meta.env.VITE_5BASE_DC),
       where("forSearchDate", ">=", todayStartDateTime.value),
-      orderBy("timestampCurrentDateTime", "desc")
+      // where("forSearchDate", "<=", todayEndDateTime.value),
+      orderBy("timestampCurrentDateTime", "desc"),
     );
 
     const querySnapshot = await getDocs(latestQuery);
 
     querySnapshotData.value = querySnapshot.docs.map(mapDocToData);
 
-    // console.log(JSON.stringify(querySnapshotData.value, null, 2));
+    //console.log(JSON.stringify(querySnapshotData.value, null, 2));
 
     // patchDocumentsDate(); //如果需要patch 資料時使用
 
@@ -268,169 +216,20 @@ const fetch = async () => {
 //   }
 // }
 
+// AppFooter add logic removed; now handled in dashboard.vue
+
 const listenForChanges = () => {
   const latestQuery = query(
     collection(db, import.meta.env.VITE_5BASE_DC),
     where("forSearchDate", ">=", todayStartDateTime.value),
-    orderBy("timestampCurrentDateTime", "desc")
+    // where("forSearchDate", "<=", todayEndDateTime.value),
+    orderBy("timestampCurrentDateTime", "desc"),
   );
 
   onSnapshot(latestQuery, (querySnapshot) => {
     querySnapshotData.value = querySnapshot.docs.map(mapDocToData);
   });
 };
-
-const create = async () => {
-  const formattedOptions: MyDocumentData["options"] = {
-    daily: [],
-    behavior: [],
-    hospital: [],
-    medicine: [],
-    vaccine: [],
-    food: [],
-  };
-
-  if (options.value && options.value.length) {
-    options.value.forEach(([category, value]) => {
-      if (formattedOptions[category as keyof MyDocumentData["options"]]) {
-        formattedOptions[category as keyof MyDocumentData["options"]].push(
-          value
-        );
-      }
-    });
-  }
-
-  const currentDateTime = `${dayjs(currentDate.value).format("YYYY-MM-DD")} ${dayjs(currentTime.value).format("HH:mm:ss")}`;
-
-  const payloadData: Partial<MyDocumentData> = {
-    remark: remark.value || "",
-    isCurrentDate: dayjs(currentDate.value).format("YYYY-MM-DD"),
-    isCurrentTime: dayjs(currentTime.value).format("HH:mm:ss"),
-    options: formattedOptions,
-    status: true,
-    timestampCurrentDateTime: dayjs(currentDateTime).valueOf(),
-    locationMode: locationMode.value,
-  };
-
-  try {
-    if (currentUpdateRefDocId.value) {
-      const docRef = doc(
-        db,
-        import.meta.env.VITE_5BASE_DC,
-        currentUpdateRefDocId.value
-      );
-      try {
-        payloadData.updateDate = dayjs().format("YYYY-MM-DD HH:mm:ss");
-        payloadData.modifyBy = "Cathy";
-
-        await updateDoc(docRef, payloadData);
-
-        isLoading.value = false;
-        formStatus.value = false;
-        remark.value = "";
-        options.value = [];
-        currentUpdateRefDocId.value = "";
-      } catch (error) {
-        toast.add({
-          severity: "error",
-          summary: "Error",
-          detail: `發生不可預期的錯誤，請先截圖。${error}`,
-          life: 5000,
-        });
-      }
-    } else {
-      currentFetchDateTime.value = dayjs().toDate();
-
-      payloadData.createDate = dayjs().format("YYYY-MM-DD HH:mm:ss");
-      payloadData.forSearchDate = currentFetchDateTime.value;
-      payloadData.weather = currentWeather.value;
-
-      payloadData.location = currentLocation.value;
-      payloadData.locationMode = locationMode.value;
-
-      payloadData.createBy = "Cathy";
-
-      const docRef = await addDoc(
-        collection(db, import.meta.env.VITE_5BASE_DC),
-        payloadData
-      );
-      console.log("Document written with ID: ", docRef.id);
-
-      if (docRef.id) {
-        isLoading.value = false;
-        formStatus.value = false;
-        remark.value = "";
-        options.value = [];
-      } else {
-        toast.add({
-          severity: "error",
-          summary: "Error",
-          detail: "建立資料發生錯誤，請先截圖。",
-          life: 5000,
-        });
-
-        isLoading.value = false;
-      }
-    }
-  } catch (error) {
-    toast.add({
-      severity: "error",
-      summary: "Error",
-      detail: `發生不可預期的錯誤，請先截圖。${error}`,
-      life: 5000,
-    });
-  }
-};
-
-onMounted(async () => {
-  fetch();
-  listenForChanges();
-});
-
-const filteredData = computed(() =>
-  querySnapshotData.value.filter((item) => item.status)
-);
-
-watch(formStatus, (newVal) => {
-  if (newVal) {
-    document.body.style.overflow = "hidden";
-  } else {
-    document.body.style.overflow = "";
-  }
-});
-
-watch(options, (newVal: [string, number][]) => {
-  let hasMedicine20 = false;
-  let hasMedicine19 = false;
-
-  newVal.forEach((item) => {
-    const [type, value] = item;
-
-    if (type === "medicine" && value === 20) {
-      hasMedicine20 = true;
-    } else if (type === "medicine" && value === 19) {
-      hasMedicine19 = true;
-    }
-  });
-
-  if (hasMedicine20 && hasMedicine19) {
-    remark.value = "擠 5 下泡 5 分鐘、泡 5 分鐘";
-  } else if (hasMedicine20) {
-    remark.value = "泡 5 分鐘";
-  } else if (hasMedicine19) {
-    remark.value = "擠 5 下泡 5 分鐘";
-  } else {
-    remark.value = currentUpdateRemarkValue.value || "";
-  }
-});
-
-function getIngredientLabel(optionName: string, value: number): string {
-  const category = optionName as keyof typeof ingredientList.value;
-  const foundIngredient = ingredientList.value[category]?.find(
-    (ingredient) => ingredient.value === value
-  );
-  return foundIngredient?.label || "";
-}
 
 const confirmUpdate = (data: MyDocumentData) => {
   confirm.require({
@@ -446,57 +245,19 @@ const confirmUpdate = (data: MyDocumentData) => {
       label: "Keep",
     },
     accept: async () => {
-      formStatus.value = true;
-      currentDate.value = new Date(data.isCurrentDate);
-      currentTime.value = new Date(
-        data.isCurrentDate + " " + data.isCurrentTime
-      );
-      remark.value = data.remark;
-      currentUpdateRemarkValue.value = data.remark;
-
-      locationMode.value = data.locationMode || 1;
-
-      options.value = [];
-      Object.keys(data.options).forEach((category) => {
-        data.options[category as keyof MyDocumentData["options"]].forEach(
-          (value) => {
-            options.value.push([category, value]);
-          }
-        );
-      });
-      const formattedOptions: MyDocumentData["options"] = {
-        daily: [],
-        behavior: [],
-        hospital: [],
-        medicine: [],
-        vaccine: [],
-        food: [],
+      formDialogEditData.value = {
+        ...data,
+        currentUpdateRefDocId: data.id,
+        currentDate: data.isCurrentDate,
+        currentTime: data.isCurrentTime,
+        options: Object.entries(data.options).flatMap(([category, arr]) =>
+          arr.map((v) => [category, v]),
+        ),
       };
-
-      options.value.forEach(([category, value]) => {
-        if (formattedOptions[category as keyof MyDocumentData["options"]]) {
-          formattedOptions[category as keyof MyDocumentData["options"]].push(
-            value
-          );
-        }
-      });
-
-      currentUpdateRefDocId.value = data?.id ?? "";
+      formDialogVisible.value = true;
     },
     reject: () => {
-      formStatus.value = false;
-      currentDate.value = null;
-      currentTime.value = null;
-      remark.value = "";
-
-      currentWeather.value = { ...initialWeather };
-      options.value = [];
-      currentUpdateRefDocId.value = "";
-      currentUpdateRemarkValue.value = "";
-      currentLocation.value = {
-        longitude: 0,
-        latitude: 0,
-      };
+      formDialogVisible.value = false;
     },
   });
 };
@@ -544,122 +305,29 @@ const confirmDelete = (refDocId: string | undefined) => {
   });
 };
 
-const getPosition = async () => {
-  isLoading.value = true;
-  if ("geolocation" in navigator) {
-    try {
-      const position = await new Promise<GeolocationPosition>(
-        (resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 0,
-          });
-        }
-      );
-
-      const latitude = position.coords.latitude;
-      const longitude = position.coords.longitude;
-
-      currentLocation.value = {
-        latitude,
-        longitude,
-      };
-
-      getRealtimeWeatherAndPlace(latitude, longitude);
-    } catch (error) {
-      toast.add({
-        severity: "error",
-        summary: "Error",
-        detail: `發生不可預期的錯誤，請先截圖。Error getting location. ${error}`,
-        life: 5000,
-      });
-      isLoading.value = false;
-    }
-  } else {
-    toast.add({
-      severity: "error",
-      summary: "Error",
-      detail:
-        "發生不可預期的錯誤，請先截圖。Geolocation is not supported by this browser.",
-      life: 5000,
-    });
-    isLoading.value = false;
-  }
+// 每筆紀錄共用一個 popup 選單，避免誤觸編輯/刪除
+const itemMenu = ref();
+const menuTargetItem = ref<MyDocumentData | null>(null);
+const itemMenuItems = [
+  {
+    label: "編輯",
+    icon: "pi pi-pen-to-square",
+    command: () => {
+      if (menuTargetItem.value) confirmUpdate(menuTargetItem.value);
+    },
+  },
+  {
+    label: "刪除",
+    icon: "pi pi-trash",
+    command: () => {
+      if (menuTargetItem.value) confirmDelete(menuTargetItem.value.id);
+    },
+  },
+];
+const openItemMenu = (event: Event, item: MyDocumentData) => {
+  menuTargetItem.value = item;
+  itemMenu.value.toggle(event);
 };
-
-async function getRealtimeWeatherAndPlace(longitude: number, latitude: number) {
-  const urlRetrieveWeather = `https://devapi.qweather.com/v7/weather/now?location=${latitude},${longitude}`;
-  const apiKey = "442073d57d51407e93ea812a3021d8e3";
-  const urlRetrieveAddress = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${longitude}&lon=${latitude}&zoom=18&addressdetails=1`;
-
-  try {
-    const [weatherResponse, addressResponse] = await Promise.all([
-      axios.get(urlRetrieveWeather, {
-        headers: {
-          "X-QW-Api-Key": apiKey,
-        },
-        decompress: true, // Ensure the response is decompressed
-      }),
-      axios.get(urlRetrieveAddress),
-    ]);
-
-    const weatherData = weatherResponse.data;
-    const addressData = addressResponse.data;
-
-    const {
-      humidity,
-      pressure,
-      windSpeed,
-      windScale,
-      windDir,
-      wind360,
-      text,
-      feelsLike,
-      temp,
-      obsTime,
-    } = weatherData.now;
-
-    currentWeather.value = {
-      humidity: humidity.toString(),
-      pressure: pressure.toString(),
-      windSpeed: windSpeed.toString(),
-      windScale: windScale.toString(),
-      windDir,
-      wind360: wind360.toString(),
-      text,
-      feelsLike: feelsLike.toString(),
-      temp: temp.toString(),
-      obsTime,
-    };
-
-    currentLocation.value = {
-      latitude,
-      longitude,
-      display_name: addressData.display_name,
-    };
-
-    create();
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      console.error("Error fetching data:", error.message);
-
-      toast.add({
-        severity: "error",
-        summary: "Error",
-        detail: `發生不可預期的錯誤，請先截圖2。${error.message}`,
-        life: 5000,
-      });
-    } else {
-      toast.add({
-        severity: "error",
-        summary: "Error",
-        detail: `發生不可預期的錯誤，請先截圖3。${error}`,
-        life: 5000,
-      });
-    }
-  }
-}
 
 const expandedIndices = ref<string[]>([]);
 const toggleWeather = (index: string) => {
@@ -669,6 +337,59 @@ const toggleWeather = (index: string) => {
     expandedIndices.value.push(index);
   }
 };
+
+// 定義 FormDialog 事件處理
+// FormDialog handlers removed; now handled in dashboard.vue
+
+// watch(options, (newVal: [string, number][]) => {
+//   let hasMedicine20 = false;
+//   let hasMedicine19 = false;
+
+//   newVal.forEach((item) => {
+//     const [type, value] = item;
+
+//     if (type === "medicine" && value === 20) {
+//       hasMedicine20 = true;
+//     } else if (type === "medicine" && value === 19) {
+//       hasMedicine19 = true;
+//     }
+//   });
+
+//   if (hasMedicine20 && hasMedicine19) {
+//     remark.value = "擠 5 下泡 5 分鐘、泡 5 分鐘";
+//   } else if (hasMedicine20) {
+//     remark.value = "泡 5 分鐘";
+//   } else if (hasMedicine19) {
+//     remark.value = "擠 5 下泡 5 分鐘";
+//   } else {
+//     remark.value = currentUpdateRemarkValue.value || "";
+//   }
+// });
+
+function getIngredientLabel(optionName: string, value: number): string {
+  const category = optionName as keyof typeof ingredientList.value;
+  const foundIngredient = ingredientList.value[category]?.find(
+    (ingredient) => ingredient.value === value,
+  );
+  return foundIngredient?.label || "";
+}
+
+const filteredData = computed(() =>
+  querySnapshotData.value.filter((item) => item.status),
+);
+
+watch(formStatus, (newVal) => {
+  if (newVal) {
+    document.body.style.overflow = "hidden";
+  } else {
+    document.body.style.overflow = "";
+  }
+});
+
+onMounted(async () => {
+  fetch();
+  listenForChanges();
+});
 </script>
 
 <template>
@@ -683,31 +404,16 @@ const toggleWeather = (index: string) => {
     animationDuration=".5s"
     aria-label="Custom ProgressSpinner"
   />
-  <header class="p-2 sticky top-0 z-20 bg-[var(--bg-color)]">
-    <div class="grid grid-cols-[3fr_1fr]">
-      <h1 class="!text-lg font-extrabold flex items-center">
-        <img src="/192x192.png" class="w-[50px] mr-2" />
-        Friday Daily Schedule
-      </h1>
-
-      <div class="text-right opacity-0">
-        <Button
-          class="!bg-[var(--main-color)]"
-          icon="pi pi-chart-bar"
-          @click="$router.push('/chart')"
-        ></Button>
-      </div>
-    </div>
-  </header>
   <main>
-    <section class="p-2 [&>div]:mb-1 text-sm">
+    <Menu ref="itemMenu" :model="itemMenuItems" :popup="true" />
+    <section class="p-2 pb-[80px] text-sm">
       <div
         v-for="(item, index) in filteredData"
         :key="index"
-        class="border-[var(--line-color)] border-b pb-1"
+        class="border border-[var(--line-color)] rounded-lg p-2 mb-2 shadow-sm"
       >
         <div class="grid grid-cols-2 gap-1 items-center">
-          <h2 class="!text-sm">
+          <h2 class="!text-base font-bold">
             {{ item.isCurrentDate }} {{ item.isCurrentTime }}
           </h2>
           <div class="text-right">
@@ -716,20 +422,12 @@ const toggleWeather = (index: string) => {
             </template>
             <template v-else>
               <Button
-                icon="pi pi-globe"
-                :class="[
-                  'w-[40px] h-[40px] bg-[var(--main-color)]',
-                  item.locationMode === 1
-                    ? '[&_span.p-button-icon]:!text-black'
-                    : item.locationMode === 2
-                      ? '[&_span.p-button-icon]:!text-[var(--main-color)]'
-                      : '[&_span.p-button-icon]:text-black',
-                ]"
+                icon="pi pi-map-marker"
+                class="w-[80px] h-[40px] bg-[var(--main-color)] [&_span.p-button-icon]:text-black dark:[&_span.p-button-icon]:text-white [&_span.p-button-label]:text-black dark:[&_span.p-button-label]:text-white"
                 size="small"
                 variant="text"
                 @click="toggleWeather(item.id!)"
-              >
-              </Button>
+              ></Button>
             </template>
           </div>
         </div>
@@ -737,10 +435,7 @@ const toggleWeather = (index: string) => {
           v-if="expandedIndices.includes(item.id!)"
           class="transition duration-300 ease-in-out grid grid-cols-3 [&_div]:p-[2px] [&_div]:m-[2px] [&_div]:bg-[var(--line-color)] [&_div]:rounded-md"
         >
-          <div
-            class="col-span-3"
-            v-if="item.locationMode && item.location?.longitude"
-          >
+          <div class="col-span-3" v-if="item.location?.longitude">
             ({{ item.location.longitude }},{{ item.location.latitude }})<br />
             {{ item.location.display_name }}
           </div>
@@ -781,20 +476,12 @@ const toggleWeather = (index: string) => {
           </div>
           <div class="flex">
             <Button
-              icon="pi pi-pen-to-square"
-              class="mx-1 w-[40px] h-[40px]"
-              size="small"
-              variant="outlined"
-              @click="confirmUpdate(item)"
-            >
-            </Button>
-            <Button
-              icon="pi pi-trash"
-              severity="danger"
+              icon="pi pi-ellipsis-v"
+              severity="secondary"
               class="w-[40px] h-[40px]"
               size="small"
-              variant="outlined"
-              @click="confirmDelete(item.id)"
+              variant="text"
+              @click="openItemMenu($event, item)"
             >
             </Button>
           </div>
@@ -802,106 +489,14 @@ const toggleWeather = (index: string) => {
       </div>
     </section>
 
-    <div class="fixed bottom-4 right-4">
-      <Button
-        class="!bg-[var(--main-color)]"
-        icon="pi pi-plus"
-        @click="
-          formStatus = true;
-          remark = '';
-          currentDate = dayjs().toDate();
-          currentTime = dayjs().toDate();
-        "
-      ></Button>
-    </div>
+    <!-- AppFooter removed; add logic handled in dashboard.vue -->
   </main>
 
-  <div
-    v-if="formStatus"
-    class="min-h-screen w-full bg-black/50 fixed top-0 flex items-end z-30"
-  >
-    <div class="bg-[var(--bg-color)] w-full py-8 px-2">
-      <div>
-        <label>所在區</label>
-        <div>
-          <Select
-            v-model="locationMode"
-            :options="locationModeOptions"
-            optionLabel="label"
-            optionValue="value"
-            class="w-full"
-          ></Select>
-        </div>
-      </div>
-
-      <div>
-        <label>Date</label>
-        <DatePicker
-          v-model="currentDate"
-          showIcon
-          fluid
-          iconDisplay="input"
-        ></DatePicker>
-      </div>
-      <div>
-        <label>Time</label>
-        <DatePicker
-          v-model="currentTime"
-          showIcon
-          fluid
-          iconDisplay="input"
-          timeOnly
-        ></DatePicker>
-      </div>
-
-      <div class="card">
-        <label>Options</label>
-        <div class="overflow-auto max-h-96">
-          <div v-for="(items, category) in ingredients" :key="category">
-            <h3 class="sticky top-0 z-10 p-2 bg-[var(--line-color)] uppercase">
-              {{ category }}
-            </h3>
-            <ul>
-              <li
-                v-for="item in items.filter((i) => i.active)"
-                :key="item.value"
-                class="flex py-1"
-              >
-                <Checkbox
-                  :inputId="category + '-' + item.value"
-                  v-model="options"
-                  :value="[category, item.value]"
-                  class="mr-1"
-                />
-                <label
-                  :for="category + '-' + item.value"
-                  class="w-full inline-block"
-                >
-                  {{ item.label }}
-                </label>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <label>Notice</label>
-        <div>
-          <Textarea class="w-full" v-model="remark"></Textarea>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-2 gap-1">
-        <Button label="Cancel" @click="formStatus = false" />
-        <Button
-          label="Save"
-          @click="currentUpdateRefDocId ? create() : getPosition()"
-          :disabled="!options.length && !remark"
-        />
-      </div>
-    </div>
-  </div>
+  <FormDialog
+    :visible="formDialogVisible"
+    :editData="formDialogEditData"
+    @update:visible="formDialogVisible = $event"
+  />
 </template>
 
 <style scoped></style>
