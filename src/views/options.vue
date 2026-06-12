@@ -80,7 +80,7 @@ function totalCount(category: IngredientsCategories): number {
       <span class="opacity-50 text-sm uppercase">options</span>
     </h1>
   </header>
-  <main class="p-2 pb-[80px] text-sm">
+  <main class="p-2 pb-[calc(80px+var(--footer-gap))] text-sm">
     <div v-if="!isReady" class="p-4 text-center">載入中...</div>
 
     <div v-else-if="!isCloudData" class="p-2">

@@ -46,5 +46,6 @@ const handleAdd = () => {
 <style scoped>
 .app-footer {
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+  padding-bottom: var(--footer-gap);
 }
 </style>

@@ -406,7 +406,7 @@ onMounted(async () => {
   />
   <main>
     <Menu ref="itemMenu" :model="itemMenuItems" :popup="true" />
-    <section class="p-2 pb-[80px] text-sm">
+    <section class="p-2 pb-[calc(80px+var(--footer-gap))] text-sm">
       <div
         v-for="(item, index) in filteredData"
         :key="index"
