@@ -1,2 +1,2 @@
 # friday-schedule
-Friday Daily Schedule Track
+Friday Daily Schedule Track.
